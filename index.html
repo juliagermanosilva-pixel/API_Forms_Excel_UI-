@@ -19,6 +19,7 @@
             align-items: center;
             justify-content: center;
             padding: 2rem 1rem;
+            position: relative;
         }
 
         /* Container principal */
@@ -196,18 +197,80 @@
             transition: all 0.2s;
             margin-top: 1rem;
             box-shadow: 0 8px 16px -6px rgba(0,0,0,0.2);
+            position: relative;
+            overflow: hidden;
         }
-        .btn-submit:hover {
+        .btn-submit:hover:not(:disabled) {
             background: linear-gradient(95deg, #157a3e, #1f964f);
             transform: scale(0.99);
             box-shadow: 0 4px 8px -3px rgba(0,0,0,0.2);
+        }
+        .btn-submit:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Loading spinner */
+        .btn-submit.loading {
+            pointer-events: none;
+        }
+        .btn-submit.loading::after {
+            content: "";
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            top: 50%;
+            left: 50%;
+            margin-left: -10px;
+            margin-top: -10px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        .btn-submit.loading span {
+            visibility: hidden;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Toast de feedback */
+        .toast-message {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #1e2f2a;
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 60px;
+            font-weight: 600;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2);
+            z-index: 1000;
+            transition: transform 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .toast-message.show {
+            transform: translateX(-50%) translateY(0);
+        }
+        .toast-message.success {
+            background: #2BAE66;
+        }
+        .toast-message.error {
+            background: #e74c3c;
+        }
+        .toast-message.info {
+            background: #F76C1E;
         }
 
         .feedback-message {
             text-align: center;
             margin-top: 1rem;
             font-weight: 500;
-            color: #2BAE66;
         }
 
         footer {
@@ -221,6 +284,15 @@
         @media (max-width: 550px) {
             .form-content { padding: 1.5rem; }
             .hero h1 { font-size: 1.6rem; }
+        }
+
+        /* Iframe oculto para fallback */
+        .hidden-iframe {
+            position: absolute;
+            width: 0;
+            height: 0;
+            border: none;
+            visibility: hidden;
         }
     </style>
 </head>
@@ -248,7 +320,7 @@
                         <span>😐 Neutro</span>
                         <span>😍 Perfeito!</span>
                     </div>
-                    <div style="text-align: center; font-weight: bold; margin-top: 8px;">Valor: <span id="satisfacaoValor">8</span></div>
+                    <div style="text-align: center; font-weight: bold; margin-top: 8px;">Valor: <span id="satisfacaoValor">8</span>/10</div>
                 </div>
             </div>
 
@@ -286,7 +358,9 @@
                 <input type="hidden" id="indicaria" required>
             </div>
 
-            <button type="submit" class="btn-submit">💜 Enviar feedback →</button>
+            <button type="submit" class="btn-submit" id="submitBtn">
+                <span>💜 Enviar feedback →</span>
+            </button>
             <div id="formFeedback" class="feedback-message"></div>
         </form>
     </div>
@@ -294,6 +368,9 @@
         🔒 Respostas anônimas · Seus dados ajudam a criar um app financeiro mais humano
     </footer>
 </div>
+
+<!-- Iframe oculto para fallback de envio -->
+<iframe class="hidden-iframe" id="hiddenFrame" name="hiddenFrame"></iframe>
 
 <script>
     // Controle slider
@@ -309,18 +386,107 @@
     
     cards.forEach(card => {
         card.addEventListener('click', () => {
-            // remove selected de todos
             cards.forEach(c => c.classList.remove('selected'));
             card.classList.add('selected');
             hiddenInput.value = card.getAttribute('data-value');
-            // validação visual resolvida
             hiddenInput.setCustomValidity('');
         });
     });
 
-    // Submissão elegante (envia para o Google Forms via redirecionamento com parâmetros)
+    // Função para mostrar toast
+    function showToast(message, type = 'info') {
+        const existingToast = document.querySelector('.toast-message');
+        if(existingToast) existingToast.remove();
+        
+        const toast = document.createElement('div');
+        toast.className = `toast-message ${type}`;
+        
+        const icons = {
+            success: '✅',
+            error: '❌',
+            info: 'ℹ️'
+        };
+        
+        toast.innerHTML = `${icons[type]} ${message}`;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => toast.classList.add('show'), 10);
+        
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
+    }
+
+    // Função para enviar para o Google Forms (sem redirecionar)
+    async function submitToGoogleForms(formData) {
+        const googleFormsUrl = "https://docs.google.com/forms/d/e/1FAIpQLSfmPnXawu_x1LbqIM1T35bHQyylaqK1VaQBIhZ24o-jClBhiA/formResponse";
+        
+        // Mapeamento dos campos (IDs corretos do formulário original)
+        const params = new URLSearchParams();
+        params.append("entry.12811720", formData.nome);
+        params.append("entry.342113990", formData.satisfacao);
+        params.append("entry.1716670665", formData.experiencia);
+        params.append("entry.1019602170", formData.indicaria);
+        
+        // Estratégia 1: Tentativa com fetch (modo no-cors)
+        try {
+            await fetch(googleFormsUrl, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: params.toString()
+            });
+            
+            // Com no-cors, não conseguimos ler a resposta, mas assumimos sucesso
+            return { success: true, method: 'fetch' };
+        } catch (error) {
+            console.log('Fetch falhou, tentando método com iframe:', error);
+            
+            // Estratégia 2: Fallback com iframe (mais confiável)
+            return new Promise((resolve) => {
+                const iframe = document.getElementById('hiddenFrame');
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = googleFormsUrl;
+                form.target = 'hiddenFrame';
+                form.style.display = 'none';
+                
+                // Adiciona os campos
+                for (let [key, value] of params.entries()) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = key;
+                    input.value = value;
+                    form.appendChild(input);
+                }
+                
+                document.body.appendChild(form);
+                
+                // Timeout para garantir que não fique travado
+                const timeout = setTimeout(() => {
+                    document.body.removeChild(form);
+                    resolve({ success: false, method: 'iframe', error: 'timeout' });
+                }, 5000);
+                
+                iframe.onload = () => {
+                    clearTimeout(timeout);
+                    document.body.removeChild(form);
+                    resolve({ success: true, method: 'iframe' });
+                };
+                
+                form.submit();
+            });
+        }
+    }
+
+    // Submissão principal
     const formElement = document.getElementById('satisfactionForm');
-    formElement.addEventListener('submit', (e) => {
+    const submitBtn = document.getElementById('submitBtn');
+    
+    formElement.addEventListener('submit', async (e) => {
         e.preventDefault();
         
         // Validações
@@ -328,37 +494,57 @@
         const satisfacao = document.getElementById('satisfacao').value;
         const experiencia = document.getElementById('experiencia').value.trim();
         const indicaria = hiddenInput.value;
-
-        if(!nome) { alert('Por favor, informe seu nome 💬'); return; }
-        if(!experiencia) { alert('Conte pra gente sua experiência! ✍️'); return; }
-        if(!indicaria) { alert('Selecione uma opção: você indicaria o app? ✨'); return; }
-
-        // Montar URL do Google Forms com os campos corretos
-        // Mapeamento IDs originais (inspecionei do form original)
-        // entry.12811720 = nome
-        // entry.342113990 = satisfacao (0-10)
-        // entry.1716670665 = experiencia
-        // entry.1019602170 = indicaria (Sim, Não indicaria, Indicaria mas com ressalvas, Indicaria depois de implementar mudanças)
         
-        const baseUrl = "https://docs.google.com/forms/d/e/1FAIpQLSfmPnXawu_x1LbqIM1T35bHQyylaqK1VaQBIhZ24o-jClBhiA/viewform";
-        const params = new URLSearchParams();
-        params.append("entry.12811720", nome);
-        params.append("entry.342113990", satisfacao);
-        params.append("entry.1716670665", experiencia);
-        params.append("entry.1019602170", indicaria);
-        params.append("usp", "pp_url");
+        if(!nome) { showToast('Por favor, informe seu nome 💬', 'error'); return; }
+        if(!experiencia) { showToast('Conte pra gente sua experiência! ✍️', 'error'); return; }
+        if(!indicaria) { showToast('Selecione uma opção: você indicaria o app? ✨', 'error'); return; }
         
-        const submitUrl = `${baseUrl}?${params.toString()}`;
+        // Desabilita botão e mostra loading
+        submitBtn.disabled = true;
+        submitBtn.classList.add('loading');
         
-        // feedback visual antes de redirecionar
-        const feedbackDiv = document.getElementById('formFeedback');
-        feedbackDiv.innerHTML = "📤 Enviando para o Google Forms...";
-        feedbackDiv.style.color = "#F76C1E";
+        const formData = {
+            nome: nome,
+            satisfacao: satisfacao,
+            experiencia: experiencia,
+            indicaria: indicaria
+        };
         
-        // Redireciona para enviar (método GET funciona no Google Forms)
-        setTimeout(() => {
-            window.location.href = submitUrl;
-        }, 400);
+        try {
+            // Tenta enviar para o Google Forms
+            const result = await submitToGoogleForms(formData);
+            
+            if(result.success) {
+                // Sucesso!
+                showToast('Feedback enviado com sucesso! ✅ Seus dados foram salvos na planilha.', 'success');
+                
+                // Limpa o formulário
+                document.getElementById('nome').value = '';
+                document.getElementById('experiencia').value = '';
+                slider.value = '8';
+                sliderValor.innerText = '8';
+                cards.forEach(c => c.classList.remove('selected'));
+                hiddenInput.value = '';
+                
+                // Opcional: mostra mensagem de agradecimento especial
+                const feedbackDiv = document.getElementById('formFeedback');
+                feedbackDiv.innerHTML = '🎉 Obrigado! Sua opinião vai nos ajudar a melhorar o app! 🎉';
+                feedbackDiv.style.color = "#2BAE66";
+                
+                setTimeout(() => {
+                    feedbackDiv.innerHTML = '';
+                }, 5000);
+            } else {
+                throw new Error('Falha no envio');
+            }
+        } catch (error) {
+            console.error('Erro no envio:', error);
+            showToast('Ops! Não conseguimos enviar agora. Tente novamente em alguns instantes. 🔄', 'error');
+        } finally {
+            // Reabilita botão
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('loading');
+        }
     });
 </script>
 </body>
