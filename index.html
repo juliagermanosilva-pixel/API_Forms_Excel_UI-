@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Pesquisa de Satisfação | Finanças App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(145deg, #0b2b1f 0%, #0a1f18 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+        }
+
+        /* Container principal */
+        .form-card {
+            max-width: 780px;
+            width: 100%;
+            background: rgba(255,255,255,0.97);
+            border-radius: 56px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,215,0,0.2);
+            overflow: hidden;
+            backdrop-filter: blur(2px);
+            transition: transform 0.2s ease;
+        }
+
+        .form-card:hover {
+            transform: scale(1.01);
+        }
+
+        /* Cabeçalho vibrante */
+        .hero {
+            background: linear-gradient(135deg, #FFB347 0%, #FF8C42 50%, #F76C1E 100%);
+            padding: 2.5rem 2rem;
+            text-align: center;
+            color: #2D1B00;
+        }
+
+        .hero h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            background: #2D1B00;
+            background: linear-gradient(135deg, #2D1B00, #1F1300);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: none;
+        }
+
+        .hero .badge {
+            display: inline-block;
+            background: rgba(45,27,0,0.15);
+            backdrop-filter: blur(4px);
+            padding: 0.4rem 1rem;
+            border-radius: 60px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-top: 0.8rem;
+        }
+
+        /* Conteúdo */
+        .form-content {
+            padding: 2rem 2rem 2.5rem;
+        }
+
+        .question {
+            margin-bottom: 2.5rem;
+            border-bottom: 1px solid #eef2f0;
+            padding-bottom: 1.8rem;
+        }
+
+        .question label {
+            font-weight: 700;
+            font-size: 1.25rem;
+            display: flex;
+            align-items: baseline;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+            color: #1e2f2a;
+        }
+
+        .required {
+            color: #F76C1E;
+            font-size: 0.8rem;
+            font-weight: normal;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 1rem 1.2rem;
+            font-size: 1rem;
+            border: 2px solid #e2e8e4;
+            border-radius: 32px;
+            transition: all 0.2s;
+            background: #ffffff;
+            outline: none;
+        }
+
+        input:focus, textarea:focus {
+            border-color: #FFB347;
+            box-shadow: 0 0 0 4px rgba(255, 180, 71, 0.25);
+        }
+
+        /* Slider satisfação */
+        .slider-container {
+            margin-top: 0.5rem;
+        }
+        .slider-value {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.5rem;
+            font-size: 0.8rem;
+            color: #2c4b3e;
+            font-weight: 500;
+        }
+        input[type="range"] {
+            padding: 0;
+            accent-color: #F76C1E;
+        }
+
+        /* pergunta NPS - cards clicáveis */
+        .nps-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-top: 0.8rem;
+        }
+        .nps-card {
+            background: #fefdf9;
+            border: 2px solid #e9ece5;
+            border-radius: 28px;
+            padding: 1rem 0.8rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .nps-card:hover {
+            transform: translateY(-4px);
+            background: #fff7e8;
+            border-color: #FFB347;
+        }
+        .nps-card.selected {
+            background: #FFEAD2;
+            border-color: #F76C1E;
+            box-shadow: 0 8px 18px rgba(247,108,30,0.2);
+            position: relative;
+        }
+        .nps-card.selected::after {
+            content: "✓";
+            position: absolute;
+            top: 12px;
+            right: 18px;
+            font-size: 1.4rem;
+            color: #F76C1E;
+            font-weight: bold;
+        }
+        .nps-emoji {
+            font-size: 2rem;
+            margin-bottom: 0.4rem;
+        }
+        .nps-title {
+            font-weight: 800;
+            margin-bottom: 0.25rem;
+        }
+        .nps-desc {
+            font-size: 0.7rem;
+            color: #5f6c66;
+        }
+        input[type="radio"] {
+            display: none;
+        }
+
+        /* botão */
+        .btn-submit {
+            background: linear-gradient(95deg, #1F8A4C, #2BAE66);
+            border: none;
+            width: 100%;
+            padding: 1.1rem;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: white;
+            border-radius: 48px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 1rem;
+            box-shadow: 0 8px 16px -6px rgba(0,0,0,0.2);
+        }
+        .btn-submit:hover {
+            background: linear-gradient(95deg, #157a3e, #1f964f);
+            transform: scale(0.99);
+            box-shadow: 0 4px 8px -3px rgba(0,0,0,0.2);
+        }
+
+        .feedback-message {
+            text-align: center;
+            margin-top: 1rem;
+            font-weight: 500;
+            color: #2BAE66;
+        }
+
+        footer {
+            font-size: 0.7rem;
+            text-align: center;
+            padding: 1rem;
+            background: #f7faf7;
+            color: #7f8c89;
+            border-top: 1px solid #e2e8e0;
+        }
+        @media (max-width: 550px) {
+            .form-content { padding: 1.5rem; }
+            .hero h1 { font-size: 1.6rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="form-card">
+    <div class="hero">
+        <h1>💸 Controle + clareza</h1>
+        <div class="badge">💰 Sua opinião transforma o Finanças App</div>
+    </div>
+    <div class="form-content">
+        <form id="satisfactionForm">
+            <!-- Nome -->
+            <div class="question">
+                <label>✨ Como podemos te chamar? <span class="required">*</span></label>
+                <input type="text" id="nome" placeholder="Ex: Ana, João, Carla..." required>
+            </div>
+
+            <!-- Satisfação slider -->
+            <div class="question">
+                <label>📊 De 0 a 10, qual sua satisfação usando o app? <span class="required">*</span></label>
+                <div class="slider-container">
+                    <input type="range" id="satisfacao" min="0" max="10" value="8" step="1">
+                    <div class="slider-value">
+                        <span>😞 Muito insatisfeito</span>
+                        <span>😐 Neutro</span>
+                        <span>😍 Perfeito!</span>
+                    </div>
+                    <div style="text-align: center; font-weight: bold; margin-top: 8px;">Valor: <span id="satisfacaoValor">8</span></div>
+                </div>
+            </div>
+
+            <!-- Experiência texto -->
+            <div class="question">
+                <label>✍️ Conte como foi sua experiência (dê detalhes) <span class="required">*</span></label>
+                <textarea rows="4" id="experiencia" placeholder="O que você mais gostou? O que podemos melhorar?"></textarea>
+            </div>
+
+            <!-- PERGUNTA PRINCIPAL: INDICARIA? -->
+            <div class="question">
+                <label>🚀 Indicaria o aplicativo para outra pessoa? <span class="required">*</span></label>
+                <div class="nps-options" id="npsGroup">
+                    <div class="nps-card" data-value="Sim">
+                        <div class="nps-emoji">🌟🤩</div>
+                        <div class="nps-title">Sim, com certeza!</div>
+                        <div class="nps-desc">Recomendo de olhos fechados</div>
+                    </div>
+                    <div class="nps-card" data-value="Não indicaria">
+                        <div class="nps-emoji">😞👎</div>
+                        <div class="nps-title">Não indicaria</div>
+                        <div class="nps-desc">Experiência não foi boa</div>
+                    </div>
+                    <div class="nps-card" data-value="Indicaria, mas com ressalvas">
+                        <div class="nps-emoji">🤔👍</div>
+                        <div class="nps-title">Com ressalvas</div>
+                        <div class="nps-desc">Tem pontos bons e ruins</div>
+                    </div>
+                    <div class="nps-card" data-value="Indicaria depois de implementar mudanças">
+                        <div class="nps-emoji">🛠️✨</div>
+                        <div class="nps-title">Depois de mudanças</div>
+                        <div class="nps-desc">Potencial, mas precisa evoluir</div>
+                    </div>
+                </div>
+                <input type="hidden" id="indicaria" required>
+            </div>
+
+            <button type="submit" class="btn-submit">💜 Enviar feedback →</button>
+            <div id="formFeedback" class="feedback-message"></div>
+        </form>
+    </div>
+    <footer>
+        🔒 Respostas anônimas · Seus dados ajudam a criar um app financeiro mais humano
+    </footer>
+</div>
+
+<script>
+    // Controle slider
+    const slider = document.getElementById('satisfacao');
+    const sliderValor = document.getElementById('satisfacaoValor');
+    slider.addEventListener('input', () => {
+        sliderValor.innerText = slider.value;
+    });
+
+    // Seleção dos cards NPS
+    const cards = document.querySelectorAll('.nps-card');
+    const hiddenInput = document.getElementById('indicaria');
+    
+    cards.forEach(card => {
+        card.addEventListener('click', () => {
+            // remove selected de todos
+            cards.forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            hiddenInput.value = card.getAttribute('data-value');
+            // validação visual resolvida
+            hiddenInput.setCustomValidity('');
+        });
+    });
+
+    // Submissão elegante (envia para o Google Forms via redirecionamento com parâmetros)
+    const formElement = document.getElementById('satisfactionForm');
+    formElement.addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        // Validações
+        const nome = document.getElementById('nome').value.trim();
+        const satisfacao = document.getElementById('satisfacao').value;
+        const experiencia = document.getElementById('experiencia').value.trim();
+        const indicaria = hiddenInput.value;
+
+        if(!nome) { alert('Por favor, informe seu nome 💬'); return; }
+        if(!experiencia) { alert('Conte pra gente sua experiência! ✍️'); return; }
+        if(!indicaria) { alert('Selecione uma opção: você indicaria o app? ✨'); return; }
+
+        // Montar URL do Google Forms com os campos corretos
+        // Mapeamento IDs originais (inspecionei do form original)
+        // entry.12811720 = nome
+        // entry.342113990 = satisfacao (0-10)
+        // entry.1716670665 = experiencia
+        // entry.1019602170 = indicaria (Sim, Não indicaria, Indicaria mas com ressalvas, Indicaria depois de implementar mudanças)
+        
+        const baseUrl = "https://docs.google.com/forms/d/e/1FAIpQLSfmPnXawu_x1LbqIM1T35bHQyylaqK1VaQBIhZ24o-jClBhiA/viewform";
+        const params = new URLSearchParams();
+        params.append("entry.12811720", nome);
+        params.append("entry.342113990", satisfacao);
+        params.append("entry.1716670665", experiencia);
+        params.append("entry.1019602170", indicaria);
+        params.append("usp", "pp_url");
+        
+        const submitUrl = `${baseUrl}?${params.toString()}`;
+        
+        // feedback visual antes de redirecionar
+        const feedbackDiv = document.getElementById('formFeedback');
+        feedbackDiv.innerHTML = "📤 Enviando para o Google Forms...";
+        feedbackDiv.style.color = "#F76C1E";
+        
+        // Redireciona para enviar (método GET funciona no Google Forms)
+        setTimeout(() => {
+            window.location.href = submitUrl;
+        }, 400);
+    });
+</script>
+</body>
+</html>
